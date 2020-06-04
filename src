@@ -1,0 +1,42 @@
+import requests
+from bs4 import BeautifulSoup
+import logging
+import csv
+import os
+
+site = "https://lewis.gsu.edu/profile-directory/"
+page = requests.get(site)
+soup = BeautifulSoup(page.content, 'html.parser')
+
+all_data_rows = soup.find_all("div", {"id": "profile_row"})
+if all_data_rows is not None:
+
+    field_names = ["Name", "Title", "Departament", "Email", "Phone"]
+
+    with open("data.csv", 'w', encoding='utf8') as f:
+        csv_writer = csv.DictWriter(f, delimiter=',', quotechar='"', fieldnames=field_names,
+                                    quoting=csv.QUOTE_NONNUMERIC, lineterminator='\n')
+        csv_writer.writeheader()
+
+        for data in all_data_rows:
+            row_data = data.find_all("div", {"class": "wpb_column vc_column_container vc_col-sm-1/5"})
+
+            data_dict = dict()
+            for field_name in field_names:
+                data_dict[field_name] = ''
+
+            data_dict["Name"] = row_data[0].text.strip()
+            data_dict["Title"] = row_data[1].text.strip()
+            data_dict["Departament"] = row_data[2].text.strip()
+            data_dict["Phone"] = row_data[4].text.strip()
+
+            data_dict["Email"] = ''
+            a = row_data[3].find("a")
+            if a is not None:
+                a_href = a.get("href")
+                if a_href is not None:
+                    if "mailto:" in a_href:
+                        mail = a_href.replace("mailto:", "")
+                        data_dict["Email"] = mail
+
+            csv_writer.writerow(data_dict)
